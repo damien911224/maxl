@@ -15,7 +15,7 @@ import torch.utils.data.sampler as sampler
 import resnet
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 
 class LabelGenerator(nn.Module):
