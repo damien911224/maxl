@@ -343,8 +343,8 @@ for index in range(total_epoch):
         grads1 = torch.autograd.grad(torch.mean(train_loss1), ResNet_model.parameters(), retain_graph=True, allow_unused=True)
         grads2 = torch.autograd.grad(torch.mean(train_loss2), ResNet_model.parameters(), retain_graph=True, allow_unused=True)
         cos_mean = 0
-        for k in range(len(grads1) - 8):  # only compute on shared representation (ignore task-specific fc-layers)
-            cos_mean += torch.mean(F.cosine_similarity(grads1[k], grads2[k], dim=0)) / (len(grads1) - 8)
+        for i in range(len(grads1) - 8):  # only compute on shared representation (ignore task-specific fc-layers)
+            cos_mean += torch.mean(F.cosine_similarity(grads1[i], grads2[i], dim=0)) / (len(grads1) - 8)
         # cosine similarity evaluation ends here
 
         train_loss = torch.mean(train_loss1) + torch.mean(train_loss2)
