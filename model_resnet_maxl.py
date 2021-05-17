@@ -271,7 +271,7 @@ cifar100_train_set = torchvision.datasets.CIFAR100(root="/mnt/hdd1",
                                                    train=True, transform=trans_train, download=True)
 cifar100_test_set = torchvision.datasets.CIFAR100(root="/mnt/hdd1",
                                                    train=False, transform=trans_test, download=True)
-batch_size = 3
+batch_size = 256
 kwargs = {'num_workers': 1, 'pin_memory': True}
 cifar100_train_loader = torch.utils.data.DataLoader(
     dataset=cifar100_train_set,
