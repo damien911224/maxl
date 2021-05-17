@@ -267,9 +267,9 @@ trans_test = transforms.Compose([
 # set keyword download=True at the first time to download the dataset
 # cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=False)
 # cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=False)
-cifar100_train_set = torchvision.datasets.CIFAR100(root="/mnt/hdd1",
+cifar100_train_set = torchvision.datasets.CIFAR100(root="/mnt/hdd0",
                                                    train=True, transform=trans_train, download=True)
-cifar100_test_set = torchvision.datasets.CIFAR100(root="/mnt/hdd1",
+cifar100_test_set = torchvision.datasets.CIFAR100(root="/mnt/hdd0",
                                                    train=False, transform=trans_test, download=True)
 batch_size = 256
 kwargs = {'num_workers': 20, 'pin_memory': True}
