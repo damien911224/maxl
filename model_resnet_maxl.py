@@ -400,7 +400,7 @@ for index in range(total_epoch):
 
         # compute primary loss with the updated thetat_1^+
         train_pred1, train_pred2 = ResNet_model.forward(train_data, fast_weights)
-        train_loss1 = ResNet_model.model_fit(train_pred1, train_label, pri=True, num_output=20)
+        train_loss1 = ResNet_model.model_fit(train_pred1, train_label, pri=True, num_output=len(psi))
 
         # update theta_2 with primary loss + entropy loss
         (torch.mean(train_loss1) + 0.2*torch.mean(train_loss3)).backward()
@@ -424,7 +424,7 @@ for index in range(total_epoch):
             test_data, test_label = test_data.to(device), test_label.to(device)
             test_pred1, test_pred2 = ResNet_model(test_data)
 
-            test_loss1 = ResNet_model.model_fit(test_pred1, test_label, pri=True, num_output=20)
+            test_loss1 = ResNet_model.model_fit(test_pred1, test_label, pri=True, num_output=len(psi))
 
             test_predict_label1 = test_pred1.data.max(1)[1]
             test_acc1 = test_predict_label1.eq(test_label).sum().item() / batch_size
