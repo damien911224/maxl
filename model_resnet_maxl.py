@@ -53,8 +53,6 @@ class LabelGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-        print()
-
     def conv_layer(self, in_channel, out_channel, index):
         if index < 3:
             conv_block = nn.Sequential(
