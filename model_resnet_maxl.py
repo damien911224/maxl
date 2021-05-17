@@ -1,4 +1,7 @@
 from collections import OrderedDict
+
+import torchvision.datasets
+
 from create_dataset import *
 
 import numpy as np
@@ -9,6 +12,11 @@ import torchvision.transforms as transforms
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.utils.data.sampler as sampler
+import resnet
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 
 class LabelGenerator(nn.Module):
     def __init__(self, psi):
@@ -17,15 +25,11 @@ class LabelGenerator(nn.Module):
             label-generation network:
             takes the input and generates auxiliary labels with masked softmax for an auxiliary task.
         """
-        filter = [64, 128, 256, 512, 512]
+        filter = [128, 256, 512, 1024, 2048]
         self.class_nb = psi
 
         # define convolution block in VGG-16
-        self.block1 = self.conv_layer(3, filter[0], 1)
-        self.block2 = self.conv_layer(filter[0], filter[1], 2)
-        self.block3 = self.conv_layer(filter[1], filter[2], 3)
-        self.block4 = self.conv_layer(filter[2], filter[3], 4)
-        self.block5 = self.conv_layer(filter[3], filter[4], 5)
+        self.resnet50 = resnet.resnet50(pretrained=False, progress=False)
 
         # define fc-layers in VGG-16 (output auxiliary classes \sum_i\psi[i])
         self.classifier = nn.Sequential(
@@ -38,13 +42,18 @@ class LabelGenerator(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_normal_(m.weight)
-                nn.init.constant_(m.bias, 0)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
-                nn.init.constant_(m.bias, 0)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+        print()
 
     def conv_layer(self, in_channel, out_channel, index):
         if index < 3:
@@ -78,11 +87,7 @@ class LabelGenerator(nn.Module):
         return logits
 
     def forward(self, x, y):
-        g_block1 = self.block1(x)
-        g_block2 = self.block2(g_block1)
-        g_block3 = self.block3(g_block2)
-        g_block4 = self.block4(g_block3)
-        g_block5 = self.block5(g_block4)
+        g_block5 = self.resnet50(x)
 
         # build a binary mask by psi, we add epsilon=1e-8 to avoid nans
         index = torch.zeros([len(self.class_nb), np.sum(self.class_nb)]) + 1e-8
@@ -103,14 +108,11 @@ class VGG16(nn.Module):
             multi-task network:
             takes the input and predicts primary and auxiliary labels (same network structure as in human)
         """
-        filter = [64, 128, 256, 512, 512]
+        # filter = [64, 128, 256, 512, 512]
+        filter = [128, 256, 512, 1024, 2048]
 
         # define convolution block in VGG-16
-        self.block1 = self.conv_layer(3, filter[0], 1)
-        self.block2 = self.conv_layer(filter[0], filter[1], 2)
-        self.block3 = self.conv_layer(filter[1], filter[2], 3)
-        self.block4 = self.conv_layer(filter[2], filter[3], 4)
-        self.block5 = self.conv_layer(filter[3], filter[4], 5)
+        self.resnet50 = resnet.resnet50(pretrained=False, progress=False)
 
         # primary task prediction
         self.classifier1 = nn.Sequential(
@@ -132,13 +134,16 @@ class VGG16(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_uniform_(m.weight)
-                nn.init.constant_(m.bias, 0)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
-                nn.init.constant_(m.bias, 0)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def conv_layer(self, in_channel, out_channel, index):
         if index < 3:
@@ -213,21 +218,13 @@ class VGG16(nn.Module):
             else retain the computational graph which will be used in second-derivative step
         """
         if weights is None:
-            g_block1 = self.block1(x)
-            g_block2 = self.block2(g_block1)
-            g_block3 = self.block3(g_block2)
-            g_block4 = self.block4(g_block3)
-            g_block5 = self.block5(g_block4)
+            g_block5 = self.resnet50(x)
 
             t1_pred = self.classifier1(g_block5.view(g_block5.size(0), -1))
             t2_pred = self.classifier2(g_block5.view(g_block5.size(0), -1))
 
         else:
-            g_block1 = self.conv_layer_ff(x, weights, 1)
-            g_block2 = self.conv_layer_ff(g_block1, weights, 2)
-            g_block3 = self.conv_layer_ff(g_block2, weights, 3)
-            g_block4 = self.conv_layer_ff(g_block3, weights, 4)
-            g_block5 = self.conv_layer_ff(g_block4, weights, 5)
+            g_block5 = self.resnet50(x)
 
             t1_pred = self.dense_layer_ff(g_block5.view(g_block5.size(0), -1), weights, 1)
             t2_pred = self.dense_layer_ff(g_block5.view(g_block5.size(0), -1), weights, 2)
@@ -270,10 +267,13 @@ trans_test = transforms.Compose([
 
 # load CIFAR-100 dataset with batch-size 100
 # set keyword download=True at the first time to download the dataset
-cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=False)
-cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=False)
-
-batch_size = 100
+# cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=False)
+# cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=False)
+cifar100_train_set = torchvision.datasets.CIFAR100(root="/mnt/hdd1",
+                                                   train=True, transform=trans_train, download=True)
+cifar100_test_set = torchvision.datasets.CIFAR100(root="/mnt/hdd1",
+                                                   train=False, transform=trans_test, download=True)
+batch_size = 3
 kwargs = {'num_workers': 1, 'pin_memory': True}
 cifar100_train_loader = torch.utils.data.DataLoader(
     dataset=cifar100_train_set,
@@ -287,7 +287,8 @@ cifar100_test_loader = torch.utils.data.DataLoader(
 
 # define label-generation model,
 # and optimiser with learning rate 1e-3, drop half for every 50 epochs, weight_decay=5e-4,
-psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
+# psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
+psi = [5] * 100
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 LabelGenerator = LabelGenerator(psi=psi).to(device)
 gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=1e-3, weight_decay=5e-4)
@@ -325,15 +326,15 @@ for index in range(total_epoch):
         train_label = train_label.type(torch.LongTensor)
         train_data, train_label = train_data.to(device), train_label.to(device)
         train_pred1, train_pred2 = VGG16_model(train_data)
-        train_pred3 = LabelGenerator(train_data, train_label[:, 2])  # generate auxiliary labels
+        train_pred3 = LabelGenerator(train_data, train_label)  # generate auxiliary labels
 
         # reset optimizers with zero gradient
         optimizer.zero_grad()
         gen_optimizer.zero_grad()
 
         # choose level 2/3 hierarchy, 20-class (gt) / 100-class classification (generated by labelgeneartor)
-        train_loss1 = VGG16_model.model_fit(train_pred1, train_label[:, 2], pri=True, num_output=20)
-        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=100)
+        train_loss1 = VGG16_model.model_fit(train_pred1, train_label, pri=True, num_output=len(psi))
+        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=np.sum(psi).astype(np.int64).data)
         train_loss3 = VGG16_model.model_entropy(train_pred3)
 
         # compute cosine similarity between gradients from primary and auxiliary loss
@@ -350,7 +351,7 @@ for index in range(total_epoch):
         optimizer.step()
 
         train_predict_label1 = train_pred1.data.max(1)[1]
-        train_acc1 = train_predict_label1.eq(train_label[:, 2]).sum().item() / batch_size
+        train_acc1 = train_predict_label1.eq(train_label).sum().item() / batch_size
 
         cost[0] = torch.mean(train_loss1).item()
         cost[1] = train_acc1
@@ -365,15 +366,15 @@ for index in range(total_epoch):
         train_label = train_label.type(torch.LongTensor)
         train_data, train_label = train_data.to(device), train_label.to(device)
         train_pred1, train_pred2 = VGG16_model(train_data)
-        train_pred3 = LabelGenerator(train_data, train_label[:, 2])
+        train_pred3 = LabelGenerator(train_data, train_label)
 
         # reset optimizer with zero gradient
         optimizer.zero_grad()
         gen_optimizer.zero_grad()
 
         # choose level 2/3 hierarchy, 20-class/100-class classification
-        train_loss1 = VGG16_model.model_fit(train_pred1, train_label[:, 2], pri=True, num_output=20)
-        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=100)
+        train_loss1 = VGG16_model.model_fit(train_pred1, train_label, pri=True, num_output=len(psi))
+        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=np.sum(psi).astype(np.int64).data)
         train_loss3 = VGG16_model.model_entropy(train_pred3)
 
         # multi-task loss
@@ -381,7 +382,7 @@ for index in range(total_epoch):
 
         # current accuracy on primary task
         train_predict_label1 = train_pred1.data.max(1)[1]
-        train_acc1 = train_predict_label1.eq(train_label[:, 2]).sum().item() / batch_size
+        train_acc1 = train_predict_label1.eq(train_label).sum().item() / batch_size
         cost[0] = torch.mean(train_loss1).item()
         cost[1] = train_acc1
 
@@ -397,14 +398,14 @@ for index in range(total_epoch):
 
         # compute primary loss with the updated thetat_1^+
         train_pred1, train_pred2 = VGG16_model.forward(train_data, fast_weights)
-        train_loss1 = VGG16_model.model_fit(train_pred1, train_label[:, 2], pri=True, num_output=20)
+        train_loss1 = VGG16_model.model_fit(train_pred1, train_label, pri=True, num_output=20)
 
         # update theta_2 with primary loss + entropy loss
         (torch.mean(train_loss1) + 0.2*torch.mean(train_loss3)).backward()
         gen_optimizer.step()
 
         train_predict_label1 = train_pred1.data.max(1)[1]
-        train_acc1 = train_predict_label1.eq(train_label[:, 2]).sum().item() / batch_size
+        train_acc1 = train_predict_label1.eq(train_label).sum().item() / batch_size
 
         # accuracy on primary task after one update
         cost[2] = torch.mean(train_loss1).item()
@@ -421,10 +422,10 @@ for index in range(total_epoch):
             test_data, test_label = test_data.to(device), test_label.to(device)
             test_pred1, test_pred2 = VGG16_model(test_data)
 
-            test_loss1 = VGG16_model.model_fit(test_pred1, test_label[:, 2], pri=True, num_output=20)
+            test_loss1 = VGG16_model.model_fit(test_pred1, test_label, pri=True, num_output=20)
 
             test_predict_label1 = test_pred1.data.max(1)[1]
-            test_acc1 = test_predict_label1.eq(test_label[:, 2]).sum().item() / batch_size
+            test_acc1 = test_predict_label1.eq(test_label).sum().item() / batch_size
 
             cost[0] = torch.mean(test_loss1).item()
             cost[1] = test_acc1
