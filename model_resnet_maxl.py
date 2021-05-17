@@ -287,13 +287,9 @@ cifar100_test_loader = torch.utils.data.DataLoader(
 # and optimiser with learning rate 1e-3, drop half for every 50 epochs, weight_decay=5e-4,
 # psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
 psi = [5] * 100
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 LabelGenerator = LabelGenerator(psi=psi)
 LabelGenerator = nn.DataParallel(LabelGenerator)
-if torch.cuda.is_available():
-    LabelGenerator.cuda()
-else:
-    LabelGenerator.to("cpu")
 LabelGenerator = LabelGenerator.to(device)
 gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=1e-3, weight_decay=5e-4)
 gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
@@ -306,10 +302,7 @@ test_batch = len(cifar100_test_loader)
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 ResNet_model = ResNet50(psi=psi)
 ResNet_model = nn.DataParallel(ResNet_model)
-if torch.cuda.is_available():
-    ResNet_model.cuda()
-else:
-    ResNet_model.to("cpu")
+ResNet_model = ResNet_model.to(device)
 optimizer = optim.SGD(ResNet_model.parameters(), lr=0.01)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
