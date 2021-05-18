@@ -302,7 +302,7 @@ cifar100_test_loader = torch.utils.data.DataLoader(
 # and optimiser with learning rate 1e-3, drop half for every 50 epochs, weight_decay=5e-4,
 # psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
 # psi = [5] * 100
-psi = [10] * 100
+psi = [5] * 100
 starting_lr = 0.8
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 LabelGenerator = LabelGenerator(psi=psi)
