@@ -13,6 +13,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch.utils.data.sampler as sampler
 import resnet
+import math
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -249,6 +250,16 @@ class ResNet50(nn.Module):
         return torch.sum(loss1)
 
 
+def adjust_learning_rate(lr, epoch, epochs, optimizer=None):
+   eta_min = lr * (args.lr_decay_rate ** 3)
+   lr = eta_min + (lr - eta_min) * (1 + math.cos(math.pi * epoch / epochs)) / 2
+
+   if optimizer is not None:
+       for param_group in optimizer.param_groups:
+           param_group['lr'] = lr
+   else:
+       return lr
+
 # load CIFAR100 dataset
 trans_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -292,15 +303,18 @@ cifar100_test_loader = torch.utils.data.DataLoader(
 # psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
 # psi = [5] * 100
 psi = [10] * 100
+starting_lr = 0.8
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 LabelGenerator = LabelGenerator(psi=psi)
 # LabelGenerator = nn.DataParallel(LabelGenerator)
 LabelGenerator = LabelGenerator.to(device)
-gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=1e-3, weight_decay=5e-4)
-gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
+# gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=1e-3, weight_decay=5e-4)
+gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=starting_lr, weight_decay=5e-4)
+# gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
 
 # define parameters
-total_epoch = 200
+# total_epoch = 200
+total_epoch = 500
 train_batch = len(cifar100_train_loader)
 test_batch = len(cifar100_test_loader)
 
@@ -308,10 +322,11 @@ test_batch = len(cifar100_test_loader)
 ResNet_model = ResNet50(psi=psi)
 # ResNet_model = nn.DataParallel(ResNet_model)
 ResNet_model = ResNet_model.to(device)
-optimizer = optim.SGD(ResNet_model.parameters(), lr=0.01)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+optimizer = optim.SGD(ResNet_model.parameters(), lr=starting_lr)
+# scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
-vgg_lr = 0.01  # define learning rate for second-derivative step (theta_1^+)
+# vgg_lr = 0.01  # define learning rate for second-derivative step (theta_1^+)
+# vgg_lr = starting_lr
 k = 0
 for index in range(total_epoch):
     cost = np.zeros(4, dtype=np.float32)
@@ -319,11 +334,12 @@ for index in range(total_epoch):
     # drop the learning rate with the same strategy in the multi-task network
     # note: not necessary to be consistent with the multi-task network's parameter,
     # it can also be learned directly from the network
-    if (index + 1) % 50 == 0:
-       vgg_lr = vgg_lr * 0.5
+    # if (index + 1) % 50 == 0:
+    #    vgg_lr = vgg_lr * 0.5
 
-    scheduler.step()
-    gen_scheduler.step()
+    adjust_learning_rate(starting_lr, index + 1, total_epoch, optimizer)
+    adjust_learning_rate(starting_lr, index + 1, total_epoch, gen_optimizer)
+    vgg_lr = adjust_learning_rate(starting_lr, index + 1, total_epoch)
 
     # evaluate training data (training-step, update on theta_1)
     ResNet_model.train()
