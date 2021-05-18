@@ -303,7 +303,7 @@ cifar100_test_loader = torch.utils.data.DataLoader(
 # psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
 # psi = [5] * 100
 psi = [5] * 100
-starting_lr = 0.8
+starting_lr = 0.1
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 LabelGenerator = LabelGenerator(psi=psi)
 # LabelGenerator = nn.DataParallel(LabelGenerator)
