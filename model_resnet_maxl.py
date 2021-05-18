@@ -251,7 +251,7 @@ class ResNet50(nn.Module):
 
 
 def adjust_learning_rate(lr, epoch, epochs, optimizer=None):
-   eta_min = lr * (args.lr_decay_rate ** 3)
+   eta_min = lr * (0.1 ** 3)
    lr = eta_min + (lr - eta_min) * (1 + math.cos(math.pi * epoch / epochs)) / 2
 
    if optimizer is not None:
