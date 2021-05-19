@@ -310,7 +310,7 @@ LabelGenerator = LabelGenerator(psi=psi)
 # LabelGenerator = nn.DataParallel(LabelGenerator)
 LabelGenerator = LabelGenerator.to(device)
 # gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=1e-3, weight_decay=5e-4)
-gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=starting_lr, weight_decay=5e-4)
+gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=starting_lr * 0.1, weight_decay=5e-4)
 # gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
 
 # define parameters
@@ -339,7 +339,7 @@ for index in range(total_epoch):
     #    vgg_lr = vgg_lr * 0.5
 
     adjust_learning_rate(starting_lr, index + 1, total_epoch, optimizer)
-    adjust_learning_rate(starting_lr, index + 1, total_epoch, gen_optimizer)
+    adjust_learning_rate(starting_lr * 0.1, index + 1, total_epoch, gen_optimizer)
     vgg_lr = adjust_learning_rate(starting_lr, index + 1, total_epoch)
 
     # evaluate training data (training-step, update on theta_1)
