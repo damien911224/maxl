@@ -115,16 +115,16 @@ class ResNet50(nn.Module):
 
         # primary task prediction
         self.classifier1 = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
-            nn.ReLU(inplace=True),
+            # nn.Linear(filter[-1], filter[-1]),
+            # nn.ReLU(inplace=True),
             nn.Linear(filter[-1], len(psi)),
             nn.Softmax(dim=1)
         )
 
         # auxiliary task prediction
         self.classifier2 = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
-            nn.ReLU(inplace=True),
+            # nn.Linear(filter[-1], filter[-1]),
+            # nn.ReLU(inplace=True),
             nn.Linear(filter[-1], int(np.sum(psi))),
             nn.Softmax(dim=1)
         )
