@@ -16,7 +16,7 @@ import resnet
 import math
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 class LabelGenerator(nn.Module):
@@ -115,16 +115,16 @@ class ResNet50(nn.Module):
 
         # primary task prediction
         self.classifier1 = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
-            nn.ReLU(inplace=True),
+            # nn.Linear(filter[-1], filter[-1]),
+            # nn.ReLU(inplace=True),
             nn.Linear(filter[-1], len(psi)),
             nn.Softmax(dim=1)
         )
 
         # auxiliary task prediction
         self.classifier2 = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
-            nn.ReLU(inplace=True),
+            # nn.Linear(filter[-1], filter[-1]),
+            # nn.ReLU(inplace=True),
             nn.Linear(filter[-1], int(np.sum(psi))),
             nn.Softmax(dim=1)
         )
@@ -206,8 +206,8 @@ class ResNet50(nn.Module):
     # define forward fc-layer (will be used in second-derivative step)
     def dense_layer_ff(self, input, weights, index):
         net = F.linear(input, weights['classifier{:d}.0.weight'.format(index)], weights['classifier{:d}.0.bias'.format(index)])
-        net = F.relu(net, inplace=True)
-        net = F.linear(net, weights['classifier{:d}.2.weight'.format(index)], weights['classifier{:d}.2.bias'.format(index)])
+        # net = F.relu(net, inplace=True)
+        # net = F.linear(net, weights['classifier{:d}.2.weight'.format(index)], weights['classifier{:d}.2.bias'.format(index)])
         net = F.softmax(net, dim=1)
         return net
 
