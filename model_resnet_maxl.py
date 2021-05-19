@@ -16,7 +16,7 @@ import resnet
 import math
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 class LabelGenerator(nn.Module):
@@ -278,14 +278,14 @@ trans_test = transforms.Compose([
 # set keyword download=True at the first time to download the dataset
 # cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=False)
 # cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=False)
-cifar100_train_set = torchvision.datasets.CIFAR100(root="/mnt/hdd0",
-                                                   train=True, transform=trans_train, download=True)
-cifar100_test_set = torchvision.datasets.CIFAR100(root="/mnt/hdd0",
-                                                   train=False, transform=trans_test, download=True)
-# cifar100_train_set = torchvision.datasets.CIFAR10(root="/mnt/hdd0",
+# cifar100_train_set = torchvision.datasets.CIFAR100(root="/mnt/hdd0",
 #                                                    train=True, transform=trans_train, download=True)
-# cifar100_test_set = torchvision.datasets.CIFAR10(root="/mnt/hdd0",
+# cifar100_test_set = torchvision.datasets.CIFAR100(root="/mnt/hdd0",
 #                                                    train=False, transform=trans_test, download=True)
+cifar100_train_set = torchvision.datasets.CIFAR10(root="/mnt/hdd0",
+                                                   train=True, transform=trans_train, download=True)
+cifar100_test_set = torchvision.datasets.CIFAR10(root="/mnt/hdd0",
+                                                   train=False, transform=trans_test, download=True)
 batch_size = 512
 kwargs = {'num_workers': 20, 'pin_memory': True}
 cifar100_train_loader = torch.utils.data.DataLoader(
@@ -302,8 +302,8 @@ cifar100_test_loader = torch.utils.data.DataLoader(
 # and optimiser with learning rate 1e-3, drop half for every 50 epochs, weight_decay=5e-4,
 # psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
 # psi = [5] * 100
-# psi = [5] * 10
-psi = [5] * 100
+psi = [5] * 10
+# psi = [5] * 100
 starting_lr = 0.1
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 LabelGenerator = LabelGenerator(psi=psi)
